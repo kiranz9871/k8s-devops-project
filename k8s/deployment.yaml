@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: app
-        image: kiran9871/k8s-devops-app:latest
+        image: kiran9871/k8s-devops-project:latest
         ports:
         - containerPort: 5000
