@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-devops-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-devops-app
+  template:
+    metadata:
+      labels:
+        app: k8s-devops-app
+    spec:
+      containers:
+      - name: app
+        image: kiran9871/k8s-devops-app:latest
+        ports:
+        - containerPort: 5000
