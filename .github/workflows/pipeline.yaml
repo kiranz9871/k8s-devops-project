@@ -1,0 +1,51 @@
+name: Production-Grade K8s Deployment
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. AUTHENTICATION: Prevents "Unauthorized" errors
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 2. BUILD: Uses a specific tag to avoid "latest" caching issues
+      - name: Build and Push
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/k8s-devops-project:${{ github.sha }} .
+          docker push ${{ secrets.DOCKER_USERNAME }}/k8s-devops-project:${{ github.sha }}
+
+      # 3. INFRASTRUCTURE: Solves the "Connection Refused" error
+      - name: Create Kind Cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: devops-cluster
+
+      # 4. IMAGE VISIBILITY: The "Secret Sauce" that makes local K8s work
+      - name: Load Image into Kind
+        run: |
+          kind load docker-image ${{ secrets.DOCKER_USERNAME }}/k8s-devops-project:${{ github.sha }} --name devops-cluster
+
+      # 5. DYNAMIC DEPLOYMENT: Updates your YAML with the new image tag on the fly
+      - name: Deploy to Kubernetes
+        run: |
+          # Use sed to replace the placeholder image with the real one just built
+          sed -i 's|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/k8s-devops-project:${{ github.sha }}|g' k8s/deployment.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+
+      # 6. VERIFICATION: Fails the pipeline if the app doesn't start
+      - name: Wait for Readiness
+        run: |
+          kubectl wait --for=condition=available deployment --all --timeout=120s
+          kubectl get pods
+          kubectl get services
