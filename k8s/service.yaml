@@ -5,8 +5,8 @@ metadata:
 spec:
   type: NodePort
   selector:
-    app: k8s-devops-app
+    app: k8s-devops-project
   ports:
-    - port: 5000
-      targetPort: 5000
-      nodePort: 30007
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30090
