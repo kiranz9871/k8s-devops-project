@@ -11,41 +11,40 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. AUTHENTICATION: Prevents "Unauthorized" errors
+      # 1. AUTHENTICATION
       - name: Docker Login
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 2. BUILD: Uses a specific tag to avoid "latest" caching issues
+      # 2. BUILD & PUSH
       - name: Build and Push
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/k8s-devops-project:${{ github.sha }} .
           docker push ${{ secrets.DOCKER_USERNAME }}/k8s-devops-project:${{ github.sha }}
 
-      # 3. INFRASTRUCTURE: Solves the "Connection Refused" error
+      # 3. CREATE KIND CLUSTER
       - name: Create Kind Cluster
         uses: helm/kind-action@v1.10.0
         with:
           cluster_name: devops-cluster
 
-      # 4. IMAGE VISIBILITY: The "Secret Sauce" that makes local K8s work
+      # 4. LOAD IMAGE INTO KIND
       - name: Load Image into Kind
         run: |
           kind load docker-image ${{ secrets.DOCKER_USERNAME }}/k8s-devops-project:${{ github.sha }} --name devops-cluster
 
-      # 5. DYNAMIC DEPLOYMENT: Updates your YAML with the new image tag on the fly
+      # 5. DEPLOY TO K8s
       - name: Deploy to Kubernetes
         run: |
-          # Use sed to replace the placeholder image with the real one just built
           sed -i 's|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/k8s-devops-project:${{ github.sha }}|g' k8s/deployment.yaml
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
 
-      # 6. VERIFICATION: Fails the pipeline if the app doesn't start
-      - name: Wait for Readiness
+      # 6. VERIFY DEPLOYMENT (FIXED)
+      - name: Wait for Deployment Rollout
         run: |
-          kubectl wait --for=condition=available deployment --all --timeout=120s
+          kubectl rollout status deployment/k8s-devops-app --timeout=120s
           kubectl get pods
-          kubectl get services
+          kubectl get svc
