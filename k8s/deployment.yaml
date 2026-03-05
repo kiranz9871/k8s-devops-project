@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: k8s-devops-app
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: k8s-devops-app
@@ -14,7 +14,43 @@ spec:
     spec:
       containers:
       - name: app
-        image: kiran9871/k8s-devops-app:v2
+        image: kiran9871/k8s-devops-app:v3
         imagePullPolicy: Always
         ports:
         - containerPort: 9090
+
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 9090
+          failureThreshold: 30
+          periodSeconds: 5
+          initialDelaySeconds: 5
+
+        livenessProbe:   
+          httpGet:
+            path: /health/live
+            port: 9090
+          initialDelaySeconds: 30
+          failureThreshold: 3
+          periodSeconds: 10
+          timeoutSeconds: 2
+
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9090
+          initialDelaySeconds: 20
+          timeoutSeconds: 2
+          periodSeconds: 5
+        
+        
+        
